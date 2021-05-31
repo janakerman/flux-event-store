@@ -27,18 +27,21 @@ func (s *EventServer) handleGetEvents(w http.ResponseWriter, r *http.Request) {
 	if revision == "" {
 		s.logger.Errorf("Parameter revision is required")
 		w.WriteHeader(400)
+		return
 	}
 
 	events, err := s.store.EventByRevision(r.Context(), revision)
 	if err != nil {
 		s.logger.WithError(err).Errorf("failed to get events")
 		w.WriteHeader(500)
+		return
 	}
 
 	payload, err := json.Marshal(events)
 	if err != nil {
 		s.logger.WithError(err).Errorf("failed to marshall events: %v", payload)
 		w.WriteHeader(500)
+		return
 	}
 
 	w.WriteHeader(200)
@@ -46,6 +49,7 @@ func (s *EventServer) handleGetEvents(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.logger.WithError(err).Errorf("failed to write body")
 		w.WriteHeader(500)
+		return
 	}
 }
 
@@ -54,6 +58,7 @@ func (s *EventServer) handlePostEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.logger.WithError(err).Errorf("failed to read request body")
 		w.WriteHeader(500)
+		return
 	}
 	defer func() {
 		_ = r.Body.Close()
@@ -65,17 +70,20 @@ func (s *EventServer) handlePostEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.logger.WithError(err).Errorf("failed to unmarshall request body: %s", string(body))
 		w.WriteHeader(400)
+		return
 	}
 
 	if event.Metadata.Revision == "" {
 		s.logger.Errorf("event has no revision: %s", string(body))
 		w.WriteHeader(400)
+		return
 	}
 
 	err = s.store.WriteEvent(r.Context(), event)
 	if err != nil {
 		s.logger.WithError(err).Errorf("failed to store event")
 		w.WriteHeader(500)
+		return
 	}
 
 	w.WriteHeader(200)
