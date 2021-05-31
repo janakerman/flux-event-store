@@ -20,5 +20,9 @@ func (m *InMemory) WriteEvent(_ context.Context, event Event) error {
 }
 
 func (m *InMemory) EventByRevision(ctx context.Context, revision string) ([]Event, error) {
-	return m.byRevision[revision], nil
+	events, ok := m.byRevision[revision]
+	if !ok {
+		events = []Event{}
+	}
+	return events, nil
 }

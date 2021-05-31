@@ -104,8 +104,9 @@ var _ = Describe("Event server", func() {
 
 				Expect(res.Code).To(Equal(200))
 
-				events := unmarshallEvents(res.Body)
-				Expect(events).To(HaveLen(0))
+				b, err := io.ReadAll(res.Body)
+				Expect(err).To(BeNil())
+				Expect(string(b)).To(Equal("[]"))
 			})
 
 			It("returns the correct event", func() {
