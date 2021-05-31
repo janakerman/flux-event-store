@@ -31,7 +31,7 @@ spec:
     value: a
 ```
 
-## A failed Flux release
+### A failed Flux release
 
 1. Create a custom Task waiting for revision `a`
 
@@ -64,7 +64,7 @@ spec:
     run-my-custom-task-1   False       ReconciliationFailed   7m25s       5m15s
     ```
    
-## A successful Flux release
+### A successful Flux release
 
 1. Create a custom Task waiting for revision `b`
 
@@ -98,3 +98,15 @@ EOF
       NAME                       SUCCEEDED   REASON                   STARTTIME   COMPLETIONTIME
       run-my-custom-task-2       True        ReconciliationSuceeded   13m         33s
     ```
+   
+## TODO:
+
+- [ ] Return events from more reconciler paths? These seem to show up in the Events when describing the Run which is helpful
+for debugging.
+- [ ] Tests for reconciler.
+- [ ] End-to-end tests - manual testing taking far too long.
+- [ ] Persistent storage for api.
+- [ ] Decide whether to split into multiple repos or leave as is.
+- [ ] Sort out build
+     - [ ] Add correct tag into Helm Chart (copy podinfo)
+     - [ ] Build images on release/tags
