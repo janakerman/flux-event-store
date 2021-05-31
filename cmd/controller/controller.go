@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"net/http"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/janakerman/flux-event-store/internal/reconciler"
 	runinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run"
@@ -20,7 +23,14 @@ func main() {
 }
 
 func newController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	c := &reconciler.Reconciler{}
+	// TODO: Take server address from environment variable.
+	// TODO: Correctly configure client.
+	// TODO: Think about tests that test the controller end to end.
+	c := &reconciler.Reconciler{
+		Logger:             logrus.New(),
+		EventServerAddress: "http://localhost:8080",
+		Client:             http.Client{},
+	}
 	impl := runreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 		return controller.Options{
 			AgentName: controllerName,
