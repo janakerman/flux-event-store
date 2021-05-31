@@ -29,7 +29,7 @@ func newController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	c.EnqueueAfter = impl.EnqueueAfter
 
 	runinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: tkncontroller.FilterRunRef("github.com/janakerman/flux-wait/v0", "FluxWait"),
+		FilterFunc: tkncontroller.FilterRunRef(reconciler.APIVersion, reconciler.Kind),
 		Handler:    controller.HandleAll(impl.Enqueue),
 	})
 
