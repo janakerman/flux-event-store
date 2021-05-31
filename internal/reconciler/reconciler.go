@@ -103,25 +103,24 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 		c.Logger.WithError(err).Errorf("unmarshall events response")
 		return nil
 	}
+	c.Logger.Infof("received %d events", len(events))
 
 	r.Status.MarkRunRunning("Waiting", "Waiting for Kustomisation to complete reconciliation")
 
-	if len(events) == 0 {
-		c.Logger.Info("no events received")
-		return nil
-	}
-
 	mostRecent := events.MostRecent()
-
-	if mostRecent.HasSuceeded() {
-		c.Logger.Info("reconciliation suceeded")
-		r.Status.MarkRunSucceeded("ReconciliationSuceeded", "The revision has been reconciled.")
-	} else if mostRecent.HasFailed() {
-		c.Logger.Info("reconciliation failed")
-		r.Status.MarkRunFailed("ReconciliationFailed",
-			"The revision failed to reconcile. Reason: '%s'. Message: '%s'",
-			mostRecent.Reason,
-			mostRecent.Message)
+	if mostRecent != nil {
+		if mostRecent.HasSuceeded() {
+			c.Logger.Info("reconciliation succeeded")
+			r.Status.MarkRunSucceeded("ReconciliationSuceeded", "The revision has been reconciled.")
+		} else if mostRecent.HasFailed() {
+			c.Logger.Info("reconciliation failed")
+			r.Status.MarkRunFailed("ReconciliationFailed",
+				"The revision failed to reconcile. Reason: '%s'. Message: '%s'",
+				mostRecent.Reason,
+				mostRecent.Message)
+		} else {
+			c.EnqueueAfter(r, 5*time.Second)
+		}
 	} else {
 		c.EnqueueAfter(r, 5*time.Second)
 	}
