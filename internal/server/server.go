@@ -11,16 +11,16 @@ import (
 )
 
 type EventServer struct {
-	port   string
-	logger *logrus.Logger
-	store  storage.EventStore
+	listenAddr string
+	logger     *logrus.Logger
+	store      storage.EventStore
 }
 
-func NewEventServer(port string, logger *logrus.Logger) *EventServer {
+func NewEventServer(listenAddr string, logger *logrus.Logger) *EventServer {
 	return &EventServer{
-		port:   port,
-		logger: logger,
-		store:  storage.NewInMemory(),
+		listenAddr: listenAddr,
+		logger:     logger,
+		store:      storage.NewInMemory(),
 	}
 }
 
@@ -30,11 +30,12 @@ func (s *EventServer) ListenAndServe(stopCh <-chan struct{}) {
 	mux.Handle("/health", http.HandlerFunc(s.handleHealth))
 	mux.Handle("/events", http.HandlerFunc(s.eventHandler))
 	srv := &http.Server{
-		Addr:    s.port,
+		Addr:    s.listenAddr,
 		Handler: http.HandlerFunc(mux.ServeHTTP),
 	}
 
 	go func() {
+		s.logger.Infof("Listening on %s", s.listenAddr)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			s.logger.Error(err, "Event server crashed")
 			os.Exit(1)

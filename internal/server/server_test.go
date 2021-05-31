@@ -29,9 +29,9 @@ var _ = Describe("Event server", func() {
 	BeforeEach(func() {
 		store = storage.NewInMemory()
 		server = EventServer{
-			port:   "8080",
-			logger: logrus.New(),
-			store:  store,
+			listenAddr: "8080",
+			logger:     logrus.New(),
+			store:      store,
 		}
 	})
 
