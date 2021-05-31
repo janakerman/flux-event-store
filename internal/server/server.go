@@ -2,8 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"net/http"
 	"os"
 	"time"
@@ -16,12 +14,14 @@ import (
 type EventServer struct {
 	port   string
 	logger *logrus.Logger
+	store  storage.EventStore
 }
 
 func NewEventServer(port string, logger *logrus.Logger) *EventServer {
 	return &EventServer{
 		port:   port,
 		logger: logger,
+		store:  storage.NewInMemory(),
 	}
 }
 
@@ -29,7 +29,7 @@ func NewEventServer(port string, logger *logrus.Logger) *EventServer {
 func (s *EventServer) ListenAndServe(stopCh <-chan struct{}) {
 	mux := http.DefaultServeMux
 	mux.Handle("/health", http.HandlerFunc(s.handleHealth))
-	mux.Handle("/notification", http.HandlerFunc(s.eventHandler(storage.NewInMemory())))
+	mux.Handle("/events", http.HandlerFunc(s.eventHandler))
 	srv := &http.Server{
 		Addr:    s.port,
 		Handler: http.HandlerFunc(mux.ServeHTTP),
@@ -51,37 +51,6 @@ func (s *EventServer) ListenAndServe(stopCh <-chan struct{}) {
 		s.logger.Error(err, "Event server graceful shutdown failed")
 	} else {
 		s.logger.Info("Event server stopped")
-	}
-}
-
-func (s *EventServer) eventHandler(store storage.EventStore) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			s.logger.WithError(err).Errorf("failed to read request body")
-			w.WriteHeader(500)
-		}
-
-		event := storage.Event{}
-
-		err = json.Unmarshal(body, &event)
-		if err != nil {
-			s.logger.WithError(err).Errorf("failed to unmarshall request body: %s", string(body))
-			w.WriteHeader(400)
-		}
-
-		if event.Metadata.Revision == "" {
-			s.logger.WithError(err).Errorf("event has no revision: %s", string(body))
-			w.WriteHeader(400)
-		}
-
-		err = store.WriteEvent(r.Context(), event)
-		if err != nil {
-			s.logger.WithError(err).Errorf("failed to store event")
-			w.WriteHeader(500)
-		}
-
-		w.WriteHeader(200)
 	}
 }
 
