@@ -55,6 +55,9 @@ func (s *EventServer) handlePostEvent(w http.ResponseWriter, r *http.Request) {
 		s.logger.WithError(err).Errorf("failed to read request body")
 		w.WriteHeader(500)
 	}
+	defer func() {
+		_ = r.Body.Close()
+	}()
 
 	event := storage.Event{}
 

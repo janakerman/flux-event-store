@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/janakerman/flux-event-store/internal/storage"
-
 	"github.com/sirupsen/logrus"
 )
 
