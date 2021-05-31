@@ -115,3 +115,5 @@ for debugging.
 - [ ] Sort out build
      - [ ] Add correct tag into Helm Chart (copy podinfo)
      - [ ] Build images on release/tags
+- [ ] Add example of Flux notification configuration
+- [ ] Add notification secret verification
