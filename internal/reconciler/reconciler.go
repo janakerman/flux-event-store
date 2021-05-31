@@ -122,6 +122,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 			"The revision failed to reconcile. Reason: '%s'. Message: '%s'",
 			mostRecent.Reason,
 			mostRecent.Message)
+	} else {
+		c.EnqueueAfter(r, 5*time.Second)
 	}
 
 	return kreconciler.NewEvent(corev1.EventTypeNormal, "RunReconciled", "Run reconciled: \"%s/%s\"", r.Namespace, r.Name)
