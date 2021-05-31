@@ -1,0 +1,231 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flux-event-store
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: flux-event-store
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: flux-event-store-controller
+  namespace: flux-event-store
+  labels:
+    app.kubernetes.io/component: flux-event-store-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: flux-event-store
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flux-event-store-controller-cluster-access
+  labels:
+    app.kubernetes.io/component: flux-event-store-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: flux-event-store
+rules:
+  # Controller needs cluster access to all Run CRs.
+  - apiGroups: ["tekton.dev"]
+    resources: ["runs"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["runs/finalizers"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["runs/status"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+
+  # Controller needs permission to configure master-election.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+
+  # Controller needs permission to emit events associated with Run CRs.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flux-event-store-controller
+  namespace: flux-event-store
+  labels:
+    app.kubernetes.io/component: flux-event-store-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: flux-event-store
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["list", "watch"]
+  # The controller needs access to these configmaps for logging information and runtime configuration.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+    resourceNames: ["config-logging", "config-observability", "config-leader-election"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flux-event-store-controller
+  namespace: flux-event-store
+  labels:
+    app.kubernetes.io/component: flux-event-store-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: flux-event-store
+subjects:
+  - kind: ServiceAccount
+    name: flux-event-store-controller
+    namespace: flux-event-store
+roleRef:
+  kind: Role
+  name: flux-event-store-controller
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: flux-event-store-controller-cluster-access
+  labels:
+    app.kubernetes.io/component: flux-event-store-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: flux-event-store
+subjects:
+  - kind: ServiceAccount
+    name: flux-event-store-controller
+    namespace: flux-event-store
+roleRef:
+  kind: ClusterRole
+  name: flux-event-store-controller-cluster-access
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-logging
+  namespace: flux-event-store
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: flux-event-store
+data:
+  # Common configuration for all knative codebase
+  zap-logger-config: |
+    {
+      "level": "info",
+      "development": false,
+      "sampling": {
+        "initial": 100,
+        "thereafter": 100
+      },
+      "outputPaths": ["stdout"],
+      "errorOutputPaths": ["stderr"],
+      "encoding": "json",
+      "encoderConfig": {
+        "timeKey": "",
+        "levelKey": "level",
+        "nameKey": "logger",
+        "callerKey": "caller",
+        "messageKey": "msg",
+        "stacktraceKey": "stacktrace",
+        "lineEnding": "",
+        "levelEncoder": "",
+        "timeEncoder": "",
+        "durationEncoder": "",
+        "callerEncoder": ""
+      }
+    }
+
+  # Log level overrides
+  loglevel.controller: "info"
+  loglevel.webhook: "info"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flux-event-store-controller
+  namespace: flux-event-store
+  labels:
+    app.kubernetes.io/name: flux-event-store-controller
+    app.kubernetes.io/component: flux-event-store-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: flux-event-store
+spec:
+  selector:
+    matchLabels:
+      run: flux-event-store
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: flux-event-store
+    spec:
+      serviceAccountName: flux-event-store-controller
+      containers:
+        - name: event-api
+          image: {{ .Values.image.registry }}/flux-event-api:{{ .Values.image.version }}
+          ports:
+            - containerPort: 8080
+        - name: event-controller
+          image: {{ .Values.image.registry }}/flux-event-controller:{{ .Values.image.version }}
+          volumeMounts:
+            - name: config-logging
+              mountPath: /etc/config-logging
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            # If you are changing these names, you will also need to update
+            # the controller's Role in 200-role.yaml to include the new
+            # values in the "configmaps" "get" rule.
+            - name: CONFIG_LOGGING_NAME
+              value: config-logging
+      volumes:
+        - name: config-logging
+          configMap:
+            name: config-logging
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: flux-event-store-controller
+    app.kubernetes.io/component: flux-event-store-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: flux-event-store
+    # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
+    pipeline.tekton.dev/release: "devel"
+    # labels below are related to istio and should not be used for resource lookup
+    app: flux-event-store-controller
+    version: "devel"
+  name: flux-event-store-controller
+  namespace: flux-event-store
+spec:
+  ports:
+    - name: http-metrics
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: flux-event-store-controller
+    app.kubernetes.io/component: flux-event-store-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: flux-event-store

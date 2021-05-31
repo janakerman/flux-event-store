@@ -1,5 +1,5 @@
 name: Publish Docker image
-on: [push]
+on: [tags]
 jobs:
   build:
     name: Test
@@ -14,7 +14,6 @@ jobs:
       - name: Test
         run: go test ./...
   api_image:
-    needs: [build]
     name: Push Event API image
     runs-on: ubuntu-latest
     steps:
@@ -25,17 +24,16 @@ jobs:
         with:
           username: janakerman
           password: ${{ secrets.DOCKER_TOKEN }}
-      - name: Generate short Git sha
-        id: vars
-        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
       - name: Push to Docker Hub
         uses: docker/build-push-action@v2
         with:
           file: cmd/api/Dockerfile
           push: true
-          tags: janakerman/flux-event-api:${{ steps.vars.outputs.sha_short }}
+          tags: janakerman/flux-event-api:${{ steps.get_version.outputs.VERSION }}
   controller_image:
-    needs: [build]
     name: Push Event Controller image
     runs-on: ubuntu-latest
     steps:
@@ -46,12 +44,12 @@ jobs:
         with:
           username: janakerman
           password: ${{ secrets.DOCKER_TOKEN }}
-      - name: Generate short Git sha
-        id: vars
-        run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
       - name: Push to Docker Hub
         uses: docker/build-push-action@v2
         with:
           file: cmd/controller/Dockerfile
           push: true
-          tags: janakerman/flux-event-controller:${{ steps.vars.outputs.sha_short }}
+          tags: janakerman/flux-event-controller:${{ steps.get_version.outputs.VERSION }}

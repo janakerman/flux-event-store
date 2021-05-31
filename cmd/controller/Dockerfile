@@ -8,4 +8,4 @@ FROM scratch
 
 COPY --from=builder /controller /controller
 
-ENTRYPOINT ["/api"]
+ENTRYPOINT ["/controller"]
