@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/janakerman/flux-event-store/internal/storage"
@@ -69,14 +68,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 		r.Status.StartTime = &now
 	}
 
-	u, err := url.Parse(fmt.Sprintf("%s/events", c.EventServerAddress))
-	if err != nil {
-		c.Logger.WithError(err).Errorf("Found unexpected ref name: %s", r.Spec.Ref.Name)
-		return nil
-	}
-	u.Query().Add("revision", params.revision)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("%s/events?revision=%s", c.EventServerAddress, params.revision), nil)
 	if err != nil {
 		c.Logger.WithError(err).Errorf("failed building request")
 		return nil
