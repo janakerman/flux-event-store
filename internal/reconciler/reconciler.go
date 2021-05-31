@@ -114,8 +114,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 	mostRecent := events.MostRecent()
 
 	if mostRecent.HasSuceeded() {
+		c.Logger.Info("reconciliation suceeded")
 		r.Status.MarkRunSucceeded("ReconciliationSuceeded", "The revision has been reconciled.")
 	} else if mostRecent.HasFailed() {
+		c.Logger.Info("reconciliation failed")
 		r.Status.MarkRunFailed("ReconciliationFailed",
 			"The revision failed to reconcile. Reason: '%s'. Message: '%s'",
 			mostRecent.Reason,
