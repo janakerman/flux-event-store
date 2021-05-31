@@ -3,6 +3,11 @@
 A proof of concept of a Flux event API combined with a Tekton Custom Task controller. The custom run waits for a given
 Flux revision to reconcile before marking the task as complete.
 
+It comprises of two components:
+1. An event API that can be configured as a Flux notification provider to provide a persistent event store.
+2. A Tekton Custom Task controller which uses the event API to wait for Flux Kustomizations to reconcile successfully before
+marking the task as successful. 
+
 ## Usage
 
 Install Tekton pipelines:
